@@ -8,13 +8,13 @@ use delaunator::{next_halfedge, Triangulation, EMPTY};
 
 const VORONOI_INFINITY: f64 = 1e+10_f64;
 
-// use thiserror::Error;
+use thiserror::Error;
 
-// #[derive(Error, Debug)]
-// pub enum Error {
-//     #[error("invalid library name {0:?}")]
-//     CellBuilderError(&'static str),
-// }
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("Error Building cells {0:?}")]
+    CellBuilderError(&'static str),
+}
 
 #[derive(Debug)]
 pub struct CellBuilder<'t> {
@@ -171,7 +171,12 @@ impl<'t> CellBuilder<'t> {
         cells
     }
 
-    fn clip_cell(&mut self, tmp_cell: &Vec<usize>, cell: &mut Vec<usize>, site: usize) {
+    fn clip_cell(
+        &mut self,
+        tmp_cell: &Vec<usize>,
+        cell: &mut Vec<usize>,
+        site: usize,
+    ) -> Result<(), Error> {
         #[cfg(debug_logs)]
         println!("  Temp: {:?}", tmp_cell);
 
@@ -216,8 +221,8 @@ impl<'t> CellBuilder<'t> {
                                 cell,
                                 *cell
                                     .last()
-                                    // .ok_or(Error::CellBuilderError("SHIT GOT FUCKED UP HERE"))?,
-                                 .expect("Cell must not be empty because we started from a vertex inside the bounding box."),
+                                    .ok_or(Error::CellBuilderError("Cell must not be empty because we started from a vertex inside the bounding box."))?,
+                                //  .expect("Cell must not be empty because we started from a vertex inside the bounding box."),
                                 first_clip,
                             );
                             #[cfg(debug_logs)]
@@ -241,11 +246,16 @@ impl<'t> CellBuilder<'t> {
                 // entering bounding box - edge crosses bounding box edge from the outside
                 (false, true) => {
                     let (first_clip, second_clip) = self.clip_voronoi_edge(c, prev);
-                    let first_clip =
-                        first_clip.expect("Edge crosses box, intersection must exist.");
+                    let first_clip = first_clip.ok_or(Error::CellBuilderError(
+                        "Edge crosses box, intersection must exist.",
+                    ))?;
+                    // .expect("Edge crosses box, intersection must exist.");
                     debug_assert!(second_clip.is_none(), "Cannot have two intersections with the bounding box when one of the edge's vertex is inside the bounding box");
                     self.insert_edge_and_wrap_around_corners(site, cell,
-                        *cell.last().expect("Cell must not be empty because we started from a vertex inside the bounding box."),
+                        *cell.last().ok_or(Error::CellBuilderError(
+                            "Cell must not be empty because we started from a vertex inside the bounding box.",
+                        ))?,
+                        // .expect("Cell must not be empty because we started from a vertex inside the bounding box."),
                        first_clip);
                     cell_open = false;
                     #[cfg(debug_logs)]
@@ -255,12 +265,14 @@ impl<'t> CellBuilder<'t> {
                 // leaving bounding box - edge crosses bounding box edge from the inside
                 (true, false) => {
                     let (first_clip, second_clip) = self.clip_voronoi_edge(prev, c);
-                    let first_clip =
-                        first_clip.expect("Edge crosses box, intersection must exist.");
+                    let first_clip = first_clip.ok_or(Error::CellBuilderError(
+                        "Edge crosses box, intersection must exist.",
+                    ));
+                    // expect("Edge crosses box, intersection must exist.");
                     debug_assert!(second_clip.is_none(), "Cannot have two intersections with the bounding box when one of the edge's vertex is inside the bounding box");
 
                     cell.push(prev);
-                    cell.push(first_clip);
+                    cell.push(first_clip?);
                     cell_open = true;
                     #[cfg(debug_logs)]
                     println!("  [{site}] Edge {prev} -> {c}: Leaving box. Added {prev} and clipped at {}", cell.last().unwrap());
@@ -277,7 +289,7 @@ impl<'t> CellBuilder<'t> {
             prev = c;
             prev_inside = inside;
         }
-        // Ok(())
+        Ok(())
     }
 
     /// Clip a voronoi edge on the bounding box's edge, if the edge crosses the bounding box.

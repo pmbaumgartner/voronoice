@@ -12,6 +12,7 @@ readme = "README.md"
 
 [dependencies]
 delaunator = { version = "^1" }
+thiserror = "1.0.38"
 
 [dev-dependencies]
 criterion = "0.3.5"
