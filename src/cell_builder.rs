@@ -8,13 +8,13 @@ use delaunator::{next_halfedge, Triangulation, EMPTY};
 
 const VORONOI_INFINITY: f64 = 1e+10_f64;
 
-use thiserror::Error;
+// use thiserror::Error;
 
-#[derive(Error, Debug)]
-pub enum Error {
-    #[error("invalid library name {0:?}")]
-    CellBuilderError(&'static str),
-}
+// #[derive(Error, Debug)]
+// pub enum Error {
+//     #[error("invalid library name {0:?}")]
+//     CellBuilderError(&'static str),
+// }
 
 #[derive(Debug)]
 pub struct CellBuilder<'t> {
