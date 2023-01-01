@@ -77,14 +77,14 @@ impl<'t> TopologicalNeighborSiteIterator<'t> {
     /// Creates iterator based on the site.
     pub fn with_triangulation(
         triangulation: &'t Triangulation,
-        site_to_incoming_leftmost_halfedge: &'t Vec<usize>,
+        site_to_incoming_leftmost_halfedge: &'t [usize],
         site: usize,
     ) -> Self {
         let &incoming_leftmost_edge = site_to_incoming_leftmost_halfedge
             .get(site)
             .expect("Site does not exist");
         Self {
-            iter: EdgesAroundSiteIterator::new(&triangulation, incoming_leftmost_edge),
+            iter: EdgesAroundSiteIterator::new(triangulation, incoming_leftmost_edge),
             last_incoming: EMPTY,
         }
     }
@@ -264,7 +264,7 @@ pub fn shortest_path_iter<'v>(
 ) -> impl Iterator<Item = usize> + 'v {
     shortest_path_iter_from_triangulation(
         voronoi.triangulation(),
-        &voronoi.sites(),
+        voronoi.sites(),
         &voronoi.site_to_incoming_leftmost_halfedge,
         start_site,
         dest,
@@ -273,7 +273,7 @@ pub fn shortest_path_iter<'v>(
 
 pub(crate) fn shortest_path_iter_from_triangulation<'t>(
     triangulation: &'t Triangulation,
-    sites: &'t Vec<Point>,
+    sites: &'t [Point],
     site_to_incoming_leftmost_halfedge: &'t Vec<usize>,
     start_site: usize,
     dest: Point,

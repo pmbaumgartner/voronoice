@@ -115,11 +115,11 @@ pub(crate) mod test {
             let area = calculate_area(&vertices);
             if area <= 0. {
                 fail(
-                    &voronoi,
+                    voronoi,
                     format!(
                         "Cell {}: not counter-clockwise. Area is {area}. {:?}",
                         cell.site(),
-                        cell.triangles().iter().copied().collect::<Vec<usize>>()
+                        cell.triangles().to_vec()
                     ),
                 );
             }
@@ -130,7 +130,7 @@ pub(crate) mod test {
                 .filter(|(_, p)| !voronoi.bounding_box().is_inside(p))
                 .for_each(|(v, p)| {
                     fail(
-                        &voronoi,
+                        voronoi,
                         format!(
                             "Cell {}: vertex {v} {:?} is outside bounding box.",
                             cell.site(),
@@ -141,22 +141,22 @@ pub(crate) mod test {
 
             if !is_convex(&vertices) {
                 fail(
-                    &voronoi,
+                    voronoi,
                     format!(
                         "Cell {} is not convex. {:?}",
                         cell.site(),
-                        cell.triangles().iter().copied().collect::<Vec<usize>>()
+                        cell.triangles().to_vec()
                     ),
                 );
             }
 
             if !is_point_inside(&vertices, cell.site_position()) {
                 fail(
-                    &voronoi,
+                    voronoi,
                     format!(
                         "Cell {} site is outside the voronoi cell. {:?}",
                         cell.site(),
-                        cell.triangles().iter().copied().collect::<Vec<usize>>()
+                        cell.triangles().to_vec()
                     ),
                 );
             }
@@ -262,7 +262,7 @@ pub(crate) mod test {
     }
 
     /// Check that the cell is ordered counter-clockwise and inside the bounding box.
-    fn calculate_area(vertices: &Vec<Point>) -> f64 {
+    fn calculate_area(vertices: &[Point]) -> f64 {
         vertices
             .iter()
             .zip(vertices.iter().cycle().skip(1))

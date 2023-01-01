@@ -8,6 +8,14 @@ use delaunator::{next_halfedge, Triangulation, EMPTY};
 
 const VORONOI_INFINITY: f64 = 1e+10_f64;
 
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("invalid library name {0:?}")]
+    CellBuilderError(&'static str),
+}
+
 #[derive(Debug)]
 pub struct CellBuilder<'t> {
     triangulation: &'t Triangulation,
@@ -44,7 +52,7 @@ impl<'t> CellBuilder<'t> {
         let corner_ownership = if clip_behavior == ClipBehavior::Clip {
             calculate_corner_ownership(
                 &bounding_box.corners(),
-                &triangulation,
+                triangulation,
                 sites,
                 &site_to_incoming_leftmost_halfedge,
             )
@@ -138,7 +146,7 @@ impl<'t> CellBuilder<'t> {
             let cell = &mut cells[site];
 
             // if cell is empty, it hasn't been processed yet
-            if cell.len() == 0 {
+            if cell.is_empty() {
                 #[cfg(debug_logs)]
                 println!();
                 #[cfg(debug_logs)]
@@ -171,8 +179,7 @@ impl<'t> CellBuilder<'t> {
         let (first_index, first, first_inside) = if let Some(inside) = tmp_cell
             .iter()
             .enumerate()
-            .filter(|(_, &c)| self.is_vertex_inside_bounding_box(c))
-            .next()
+            .find(|(_, &c)| self.is_vertex_inside_bounding_box(c))
         {
             (inside.0, *inside.1, true)
         } else {
@@ -204,9 +211,15 @@ impl<'t> CellBuilder<'t> {
                         if cell_open {
                             // an edge crossing the box still leaves the cell open, but it may be able to wrap around a corner
                             // this is an edge case, see degerated10.json input
-                            self.insert_edge_and_wrap_around_corners(site, cell,
-                                *cell.last().expect("Cell must not be empty because we started from a vertex inside the bounding box."),
-                                first_clip);
+                            self.insert_edge_and_wrap_around_corners(
+                                site,
+                                cell,
+                                *cell
+                                    .last()
+                                    // .ok_or(Error::CellBuilderError("SHIT GOT FUCKED UP HERE"))?,
+                                 .expect("Cell must not be empty because we started from a vertex inside the bounding box."),
+                                first_clip,
+                            );
                             #[cfg(debug_logs)]
                             println!("  [{site}] Edge {prev} -> {c}. Edge outside box. The box was open.");
                         }
@@ -264,6 +277,7 @@ impl<'t> CellBuilder<'t> {
             prev = c;
             prev_inside = inside;
         }
+        // Ok(())
     }
 
     /// Clip a voronoi edge on the bounding box's edge, if the edge crosses the bounding box.
@@ -432,7 +446,7 @@ impl<'t> CellBuilder<'t> {
 fn calculate_corner_ownership(
     corners: &[Point],
     triangulation: &Triangulation,
-    sites: &Vec<Point>,
+    sites: &[Point],
     site_to_incoming_leftmost_halfedge: &Vec<usize>,
 ) -> Vec<usize> {
     // corners counter-clockwise
@@ -470,7 +484,7 @@ fn calculate_incoming_edges(triangulation: &Triangulation, num_of_sites: usize) 
     let mut site_to_incoming_leftmost_halfedge = vec![EMPTY; num_of_sites];
 
     for e in 0..triangulation.triangles.len() {
-        let s = site_of_incoming(&triangulation, e);
+        let s = site_of_incoming(triangulation, e);
         if site_to_incoming_leftmost_halfedge[s] == EMPTY || triangulation.halfedges[e] == EMPTY {
             site_to_incoming_leftmost_halfedge[s] = e;
         }

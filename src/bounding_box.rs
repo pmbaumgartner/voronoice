@@ -155,16 +155,14 @@ impl BoundingBox {
         } else if abs_diff_eq(point.y, self.bottom(), EQ_EPSILON) {
             // bottom
             Some(2)
+        } else if abs_diff_eq(point.x, self.right(), EQ_EPSILON) {
+            // right
+            Some(3)
+        } else if abs_diff_eq(point.x, self.left(), EQ_EPSILON) {
+            // left
+            Some(1)
         } else {
-            if abs_diff_eq(point.x, self.right(), EQ_EPSILON) {
-                // right
-                Some(3)
-            } else if abs_diff_eq(point.x, self.left(), EQ_EPSILON) {
-                // left
-                Some(1)
-            } else {
-                None
-            }
+            None
         }
     }
 
@@ -793,8 +791,8 @@ mod tests {
                     // -1^1 = -1
                     // -1^2 =  1
                     let origin = Point {
-                        x: base_origin.x * -1_f64.powi(i),
-                        y: base_origin.y * -1_f64.powi(j),
+                        x: base_origin.x * -(1_f64.powi(i)),
+                        y: base_origin.y * -(1_f64.powi(j)),
                     };
 
                     let bbox = BoundingBox::new(origin.clone(), width, height);

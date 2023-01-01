@@ -108,7 +108,7 @@ impl<'v> VoronoiCell<'v> {
 
     /// Gets an iterator that returns the shortest path on the Voronoi diagram to the destination point, starting from the current cell.
     #[inline]
-    pub fn iter_path<'p>(&self, dest: Point) -> impl Iterator<Item = usize> + 'v {
+    pub fn iter_path(&self, dest: Point) -> impl Iterator<Item = usize> + 'v {
         crate::iterator::shortest_path_iter(self.voronoi, self.site, dest)
     }
 
@@ -168,7 +168,7 @@ impl<'v> fmt::Debug for VoronoiCell<'v> {
             .field(
                 "vertices",
                 &Cellvertices {
-                    triangles: self.triangles().iter().copied().collect(),
+                    triangles: self.triangles().to_vec(),
                     positions: self
                         .triangles()
                         .iter()
