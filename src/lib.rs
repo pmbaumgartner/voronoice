@@ -187,7 +187,8 @@ impl Voronoi {
             circumcenters,
             bounding_box.clone(),
             clip_behavior,
-        );
+        )
+        .ok()?;
         let result = cell_builder.build();
 
         Some(Voronoi {

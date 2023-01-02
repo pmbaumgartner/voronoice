@@ -43,24 +43,25 @@ impl<'t> CellBuilder<'t> {
         vertices: Vec<Point>,
         bounding_box: BoundingBox,
         clip_behavior: ClipBehavior,
-    ) -> Self {
+    ) -> Result<Self, Error> {
         let site_to_incoming_leftmost_halfedge =
             calculate_incoming_edges(triangulation, sites.len());
         let is_vertex_inside_bounding_box: Vec<bool> =
             vertices.iter().map(|c| bounding_box.is_inside(c)).collect();
 
-        let corner_ownership = if clip_behavior == ClipBehavior::Clip {
-            calculate_corner_ownership(
-                &bounding_box.corners(),
-                triangulation,
-                sites,
-                &site_to_incoming_leftmost_halfedge,
-            )
-        } else {
-            Vec::with_capacity(0)
+        let corner_ownership = match clip_behavior {
+            ClipBehavior::Clip => {
+                let value = calculate_corner_ownership(
+                    &bounding_box.corners(),
+                    triangulation,
+                    sites,
+                    &site_to_incoming_leftmost_halfedge,
+                );
+                value?
+            }
+            _ => Vec::with_capacity(0),
         };
-
-        Self {
+        Ok(Self {
             triangulation,
             sites,
             site_to_incoming_leftmost_halfedge,
@@ -71,7 +72,7 @@ impl<'t> CellBuilder<'t> {
             vertices,
             bounding_box,
             clip_behavior,
-        }
+        })
     }
 
     pub fn build(mut self) -> CellBuilderResult {
@@ -232,7 +233,8 @@ impl<'t> CellBuilder<'t> {
                         println!("  [{site}] Edge {prev} -> {c}. First clip: {first_clip}. Second clip: {}", second_clip.unwrap_or_default());
                         self.insert_edge_and_wrap_around_corners(site, cell,
                            first_clip,
-                second_clip.expect("Two intersection points need to occur when a line crosses the bounding box"));
+                            second_clip.ok_or(Error::CellBuilderError("Two intersection points need to occur when a line crosses the bounding box"))?);
+                        // .expect("Two intersection points need to occur when a line crosses the bounding box"));
                         #[cfg(debug_logs)]
                         println!("  [{site}] Edge {prev} -> {c}. Edge outside box. Entered at {} and left at {}", first_clip, second_clip.unwrap());
                     } else {
@@ -341,7 +343,7 @@ impl<'t> CellBuilder<'t> {
         cell: &mut Vec<usize>,
         first_clip: usize,
         second_clip: usize,
-    ) {
+    ) -> Result<(), Error> {
         if cell.last() != Some(&first_clip) {
             cell.push(first_clip);
         }
@@ -349,11 +351,17 @@ impl<'t> CellBuilder<'t> {
         let first_edge = self
             .bounding_box
             .which_edge(&self.vertices[first_clip])
-            .expect("First clipped value is expected to be on the edge of the bounding box.");
+            .ok_or(Error::CellBuilderError(
+                "First clipped value is expected to be on the edge of the bounding box.",
+            ))?;
+        // .expect("First clipped value is expected to be on the edge of the bounding box.");
         let second_edge = self
             .bounding_box
             .which_edge(&self.vertices[second_clip])
-            .expect("Second clipped value is expected to be on the edge of the bounding box.");
+            .ok_or(Error::CellBuilderError(
+                "Second clipped value is expected to be on the edge of the bounding box.",
+            ))?;
+        // .expect("Second clipped value is expected to be on the edge of the bounding box.");
         #[cfg(debug_logs)]
         let len = cell.len();
 
@@ -384,6 +392,7 @@ impl<'t> CellBuilder<'t> {
 
         #[cfg(debug_logs)]
         println!("  [{site}] Edge {first_clip} ({first_edge}) -> {second_clip} ({second_edge}). Wrapping around {:?}", &cell[len-1..]);
+        Ok(())
     }
 
     fn extend_voronoi_vertex(&mut self, hull_edge: usize) -> usize {
@@ -460,7 +469,7 @@ fn calculate_corner_ownership(
     triangulation: &Triangulation,
     sites: &[Point],
     site_to_incoming_leftmost_halfedge: &Vec<usize>,
-) -> Vec<usize> {
+) -> Result<Vec<usize>, Error> {
     // corners counter-clockwise
     let mut corner_owners: Vec<usize> = Vec::with_capacity(corners.len());
 
@@ -471,7 +480,8 @@ fn calculate_corner_ownership(
     let mut site = *triangulation
         .hull
         .first()
-        .expect("Hull is at least a triangle.");
+        .ok_or(Error::CellBuilderError("Hull is at least a triangle."))?;
+    // .expect("Hull is at least a triangle.");
     for corner in corners {
         let owner = crate::iterator::shortest_path_iter_from_triangulation(
             triangulation,
@@ -481,13 +491,16 @@ fn calculate_corner_ownership(
             corner.clone(),
         )
         .last()
-        .expect("There must be one site that is the closest.");
+        .ok_or(Error::CellBuilderError(
+            "There must be one site that is the closest.",
+        ))?;
+        // .expect("There must be one site that is the closest.");
 
         site = owner;
         corner_owners.push(owner);
     }
 
-    corner_owners
+    Ok(corner_owners)
 }
 
 fn calculate_incoming_edges(triangulation: &Triangulation, num_of_sites: usize) -> Vec<usize> {
